@@ -1,0 +1,8 @@
+prefix=/mnt/sDisk/tests/video-features/video-features/libs/xsimd
+libdir=/mnt/sDisk/tests/video-features/video-features/libs/xsimd/lib
+includedir=/mnt/sDisk/tests/video-features/video-features/libs/xsimd/include
+
+Name: xsimd
+Description: xsimd provides a unified means for using SIMD features for library authors..
+Version: 12.1.1
+Cflags: -I${includedir}

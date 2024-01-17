@@ -1,0 +1,62 @@
+{
+    "configurations": [
+        {
+            "name": "(gdb) feature unit tester",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/../build/apps/feature_unit_tester/feature_unit_tester",
+            "args": [
+                "--gtest_print_time", "1"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "(gdb) feature generator",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/../build/apps/feature_generator/feature_generator",
+            "args": [
+                // "-i", "/mnt/sDisk2/dl-test-videos/BVI-DVC/Yuv/AAnimalsS1Harmonics_3840x2176_60fps_10bit_420.yuv",
+                "-i", "/source/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv",
+                "-o", "/mnt/sDisk2/dl-test-videos/BVI-DVC/Yuv/features",
+                "-f", "50",
+                "-w", "1920",
+                "-h", "1080",
+                "-tempdir", "/mnt/sDisk/temp/"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

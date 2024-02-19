@@ -21,6 +21,7 @@
 #include "StopWatch.hpp"
 
 #include "gtest/gtest.h"
+#include "jsoncpp/json/json.h"
 
 int App::run(int argc, char **argv)
 {
@@ -35,6 +36,8 @@ int App::run(int argc, char **argv)
   }
 
   derive_features();
+
+  save_as_json();
 
   return 0;
 }
@@ -64,7 +67,7 @@ void App::derive_features()
     disp.put(image);
   } while (true);
 
-  CThreadPool tp{1u};
+  CThreadPool tp{(unsigned)num_threads};
   std::list<std::future<void>> lf;
 
   constexpr uint32_t num_glcm_features = glcm::NUM_PROPERTIES * glcm_angles * glcm_distances;
@@ -240,7 +243,14 @@ bool App::parse_config(int argc, char **argv)
   bool do_help = false;
 
   po::Options opts;
-  opts.addOptions()("help", do_help, false, "Print help text")("-i", input_yuv_path, std::string{}, "Input yuv file path")("-w", input_width, 0, "Input width")("-h", input_height, 0, "Input height")("-f", input_fps, 0.0, "Input fps")("-o", output_json_path, std::string{}, "Output json file path")("-tempdir", temp_dir_path, std::string{"./"}, "temp directory");
+  opts.addOptions()
+  ("help", do_help, false, "Print help text")
+  ("-i", input_yuv_path, std::string{}, "Input yuv file path")
+  ("-w", input_width, 0, "Input width")
+  ("-h", input_height, 0, "Input height")
+  ("-f", input_fps, 0.0, "Input fps")
+  ("-t", num_threads, 40, "Number of thread used")
+  ("-o", output_json_path, std::string{}, "Output json file path");
 
   po::setDefaults(opts);
   po::ErrorReporter err;
@@ -259,4 +269,45 @@ bool App::parse_config(int argc, char **argv)
   }
 
   return true;
+}
+
+void App::save_as_json()
+{
+  constexpr int num_glcm_features = glcm::NUM_PROPERTIES * glcm_angles * glcm_distances;
+
+  Json::Value root;
+  Json::Value frames = Json::Value{Json::arrayValue};
+
+  for(uint32_t i = 0 ; i < picture_counts; ++i)
+  {
+    Json::Value frame;
+
+    Json::Value glcm;
+    for(int k = 0 ; k < num_glcm_features; k++)
+    {
+      glcm[k] = glcm_feat[i * num_glcm_features + k];
+    }
+    frame["glcm"] = glcm;
+
+    Json::Value ncc;
+    for(int k = 0 ; k < 5; k++)
+    {
+      ncc[k] = ncc_feat[i * 5 + k];
+    }
+    frame["ncc"] = ncc;
+    
+    Json::Value tc;
+    for(int k = 0 ; k < 5; k++)
+    {
+      tc[k] = tc_feat[i * 5 + k];
+    }
+    frame["tc"] = tc;
+
+    frames.append(frame);
+  }
+  root["frames"] = frames;
+
+  std::ofstream f{output_json_path};
+  f << root;
+  f.close();
 }

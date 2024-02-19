@@ -18,11 +18,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(_DEBUG_)
 endif()
 
-# cmake_policy(SET CMP0135 NEW)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSONCPP REQUIRED IMPORTED_TARGET jsoncpp)
+
+cmake_policy(SET CMP0135 NEW)
 
 if(POLICY CMP0146)
   cmake_policy(SET CMP0146 OLD)
 endif()
+
+enable_testing()
 
 add_subdirectory(apps)
 add_subdirectory(libs)

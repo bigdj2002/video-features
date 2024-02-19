@@ -5,8 +5,6 @@ add_library(
   ${CMAKE_CURRENT_SOURCE_DIR}/sources/glcm.cpp
 )
 
-enable_testing()
-
 target_link_libraries(${PROJECT_NAME} PRIVATE
   libmath
   xsimd

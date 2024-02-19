@@ -16,6 +16,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${CMAKE_SOURCE_DIR}/libs/ncc/include
   ${CMAKE_SOURCE_DIR}/libs/tc-freq/include
   ${CMAKE_SOURCE_DIR}/libs/libmath/include
+  ${JSONCPP_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -25,6 +26,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   tc-freq
   libmath
   -pthread
+  ${JSONCPP_LIBRARIES}
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE

@@ -32,13 +32,13 @@
             "request": "launch",
             "program": "${workspaceFolder}/../build/apps/feature_generator/feature_generator",
             "args": [
-                // "-i", "/mnt/sDisk2/dl-test-videos/BVI-DVC/Yuv/AAnimalsS1Harmonics_3840x2176_60fps_10bit_420.yuv",
-                "-i", "/source/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv",
-                "-o", "/mnt/sDisk2/dl-test-videos/BVI-DVC/Yuv/features",
+                // "-i", "/source/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv",
+                "-i", "/mnt/sDisk2/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv",
+                "-o", "${workspaceFolder}/stat.json",
                 "-f", "50",
                 "-w", "1920",
                 "-h", "1080",
-                "-tempdir", "/mnt/sDisk/temp/"
+                "-t", "40"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

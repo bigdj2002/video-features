@@ -41,6 +41,7 @@ private:
   int input_height;
   double input_fps;
   int num_threads;
+  int enable_simd;
   std::string output_json_path;
 
   static constexpr int bframes = 3;

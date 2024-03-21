@@ -130,13 +130,23 @@ void App::derive_glcm(
     int glcm_distance,
     double glcm_angle)
 {
-  auto comatrix = glcm::graycomatrix(
-      image.get(), input_width, 8, input_width, input_height, glcm_distance, glcm_angle, 8, true);
-
-  for (int i = 0; i < glcm::NUM_PROPERTIES; ++i)
+  if (enable_simd)
   {
-    double value = glcm::graycoprops(comatrix, glcm::property(i));
-    storage[i] = value;
+    auto comatrix = glcm::graycomatrix_simd(image.get(), input_width, 8, input_width, input_height, glcm_distance, glcm_angle, 8, true);
+    for (int i = 0; i < glcm::NUM_PROPERTIES; ++i)
+    {
+      double value = glcm::graycoprops_simd(comatrix, glcm::property(i));
+      storage[i] = value;
+    }
+  }
+  else
+  {
+    auto comatrix = glcm::graycomatrix(image.get(), input_width, 8, input_width, input_height, glcm_distance, glcm_angle, 8, true);
+    for (int i = 0; i < glcm::NUM_PROPERTIES; ++i)
+    {
+      double value = glcm::graycoprops(comatrix, glcm::property(i));
+      storage[i] = value;
+    }
   }
 }
 
@@ -150,22 +160,46 @@ void App::derive_ncc(
 
   if (ref_image0 != nullptr)
   {
-    auto ncc0 = ncc::ncc(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height, 32);
-    a[0] = math_util::Mean(ncc0);
-    a[1] = math_util::StandardDeviation(ncc0);
-    a[2] = math_util::ShannonEntropy(ncc0);
-    a[3] = math_util::Skewness(ncc0);
-    a[4] = math_util::Kurtosis(ncc0);
+    if (enable_simd)
+    {
+      auto ncc0 = ncc::ncc_simd(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height, 32);
+      a[0] = math_util::Mean_simd(ncc0);
+      a[1] = math_util::StandardDeviation_simd(ncc0);
+      a[2] = math_util::ShannonEntropy_simd(ncc0);
+      a[3] = math_util::Skewness_simd(ncc0);
+      a[4] = math_util::Kurtosis_simd(ncc0);
+    }
+    else
+    {
+      auto ncc0 = ncc::ncc(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height, 32);
+      a[0] = math_util::Mean(ncc0);
+      a[1] = math_util::StandardDeviation(ncc0);
+      a[2] = math_util::ShannonEntropy(ncc0);
+      a[3] = math_util::Skewness(ncc0);
+      a[4] = math_util::Kurtosis(ncc0);
+    }
   }
 
   if (ref_image1 != nullptr)
   {
-    auto ncc1 = ncc::ncc(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height, 32);
-    b[0] = math_util::Mean(ncc1);
-    b[1] = math_util::StandardDeviation(ncc1);
-    b[2] = math_util::ShannonEntropy(ncc1);
-    b[3] = math_util::Skewness(ncc1);
-    b[4] = math_util::Kurtosis(ncc1);
+    if (enable_simd)
+    {
+      auto ncc1 = ncc::ncc_simd(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height, 32);
+      b[0] = math_util::Mean_simd(ncc1);
+      b[1] = math_util::StandardDeviation_simd(ncc1);
+      b[2] = math_util::ShannonEntropy_simd(ncc1);
+      b[3] = math_util::Skewness_simd(ncc1);
+      b[4] = math_util::Kurtosis_simd(ncc1);
+    }
+    else
+    {
+      auto ncc1 = ncc::ncc(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height, 32);
+      b[0] = math_util::Mean(ncc1);
+      b[1] = math_util::StandardDeviation(ncc1);
+      b[2] = math_util::ShannonEntropy(ncc1);
+      b[3] = math_util::Skewness(ncc1);
+      b[4] = math_util::Kurtosis(ncc1);
+    }
   }
 
   if (ref_image0 == nullptr && ref_image1 == nullptr)
@@ -198,22 +232,46 @@ void App::derive_tc(
 
   if (ref_image0 != nullptr)
   {
-    auto ncc0 = freq::dct8x8_tc_simd(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height);
-    a[0] = math_util::Mean(ncc0);
-    a[1] = math_util::StandardDeviation(ncc0);
-    a[2] = math_util::ShannonEntropy(ncc0);
-    a[3] = math_util::Skewness(ncc0);
-    a[4] = math_util::Kurtosis(ncc0);
+    if (enable_simd)
+    {
+      auto ncc0 = freq::dct8x8_tc_simd(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height);
+      a[0] = math_util::Mean_simd(ncc0);
+      a[1] = math_util::StandardDeviation_simd(ncc0);
+      a[2] = math_util::ShannonEntropy_simd(ncc0);
+      a[3] = math_util::Skewness_simd(ncc0);
+      a[4] = math_util::Kurtosis_simd(ncc0);
+    }
+    else
+    {
+      auto ncc0 = freq::dct8x8_tc(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height);
+      a[0] = math_util::Mean(ncc0);
+      a[1] = math_util::StandardDeviation(ncc0);
+      a[2] = math_util::ShannonEntropy(ncc0);
+      a[3] = math_util::Skewness(ncc0);
+      a[4] = math_util::Kurtosis(ncc0);
+    }
   }
 
   if (ref_image1 != nullptr)
   {
-    auto ncc1 = freq::dct8x8_tc_simd(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height);
-    b[0] = math_util::Mean(ncc1);
-    b[1] = math_util::StandardDeviation(ncc1);
-    b[2] = math_util::ShannonEntropy(ncc1);
-    b[3] = math_util::Skewness(ncc1);
-    b[4] = math_util::Kurtosis(ncc1);
+    if (enable_simd)
+    {
+      auto ncc1 = freq::dct8x8_tc_simd(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height);
+      b[0] = math_util::Mean_simd(ncc1);
+      b[1] = math_util::StandardDeviation_simd(ncc1);
+      b[2] = math_util::ShannonEntropy_simd(ncc1);
+      b[3] = math_util::Skewness_simd(ncc1);
+      b[4] = math_util::Kurtosis_simd(ncc1);
+    }
+    else
+    {
+      auto ncc1 = freq::dct8x8_tc(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height);
+      b[0] = math_util::Mean(ncc1);
+      b[1] = math_util::StandardDeviation(ncc1);
+      b[2] = math_util::ShannonEntropy(ncc1);
+      b[3] = math_util::Skewness(ncc1);
+      b[4] = math_util::Kurtosis(ncc1);
+    }
   }
 
   if (ref_image0 == nullptr && ref_image1 == nullptr)
@@ -250,6 +308,7 @@ bool App::parse_config(int argc, char **argv)
   ("-h", input_height, 0, "Input height")
   ("-f", input_fps, 0.0, "Input fps")
   ("-t", num_threads, 40, "Number of thread used")
+  ("-s", enable_simd, 1, "Enabling SIMD")
   ("-o", output_json_path, std::string{}, "Output json file path");
 
   po::setDefaults(opts);

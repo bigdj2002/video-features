@@ -293,7 +293,9 @@ namespace math_util
     {
       auto hist_batch = xsimd::batch_cast<float>(xsimd::load_unaligned(&hist[i]));
       auto prob_batch = xsimd::div(hist_batch, batch_type(v.size()));
-      entropy += xsimd::reduce_add(xsimd::mul(xsimd::mul(batch_type(-1), prob_batch), xsimd::log2(prob_batch)));
+      prob_batch = xsimd::max(prob_batch, batch_type(1e-6));
+      auto log_prob = xsimd::log2(prob_batch);
+      entropy += xsimd::reduce_add(xsimd::mul(xsimd::mul(batch_type(-1), prob_batch), log_prob));
     }
 
     for (size_t i = algined_size; i < hist.size(); ++i)
@@ -304,6 +306,9 @@ namespace math_util
         entropy += (-prob * std::log2(prob));
       }
     }
+
+    if (std::isnan(entropy))
+      assert(false);
 
     return entropy;
   }

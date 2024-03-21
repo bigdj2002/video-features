@@ -1,0 +1,5 @@
+# vscode setting
+.vscode/
+
+# output json file
+.json

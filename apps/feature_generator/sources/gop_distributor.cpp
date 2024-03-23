@@ -1,4 +1,4 @@
-#include "gop_dispenser.hpp"
+#include "gop_distributor.hpp"
 
 struct gop_struct_node
 {
@@ -10,7 +10,7 @@ struct gop_struct_node
 
 static gop_struct_node g_pic_struct[4][4];
 
-gop_dispenser::gop_dispenser(int bframes, int keyint)
+gop_distributor::gop_distributor(int bframes, int keyint)
 {
   this->keyint = keyint;
   interval = bframes + 1;
@@ -31,7 +31,7 @@ gop_dispenser::gop_dispenser(int bframes, int keyint)
   g_pic_struct[3][3] = {.disp_idx = 2, .dec_idx = 3, .ref0 = 1, .ref1 = 3};
 }
 
-void gop_dispenser::put(std::shared_ptr<uint8_t> image)
+void gop_distributor::put(std::shared_ptr<uint8_t> image)
 {
   if (poc % keyint == 0)
   {
@@ -55,12 +55,12 @@ void gop_dispenser::put(std::shared_ptr<uint8_t> image)
   ++poc;
 }
 
-void gop_dispenser::terminate() 
+void gop_distributor::terminate() 
 {
   dispense_gop(); 
 }
 
-bool gop_dispenser::dequeue(gop_output& out)
+bool gop_distributor::dequeue(gop_output& out)
 {
   if(fifo_gop.empty())
   {
@@ -72,7 +72,7 @@ bool gop_dispenser::dequeue(gop_output& out)
   return true;
 }
 
-void gop_dispenser::dispense_gop()
+void gop_distributor::dispense_gop()
 {
   if (num_holding_pictures == 0)
   {

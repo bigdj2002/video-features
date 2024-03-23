@@ -3,7 +3,7 @@ project(feature_generator)
 set(APP_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/sources/app.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/sources/gop_dispenser.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/sources/gop_distributor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/sources/yuv_reader.cpp
 )
 

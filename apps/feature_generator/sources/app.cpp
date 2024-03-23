@@ -8,7 +8,7 @@
 #include <sstream>
 
 #include "app.hpp"
-#include "gop_dispenser.hpp"
+#include "gop_distributor.hpp"
 
 #include "common_utils.h"
 #include "thread_pool.hpp"
@@ -45,7 +45,7 @@ int App::run(int argc, char **argv)
 void App::derive_features()
 {
   yuv_reader yuv{};
-  gop_dispenser disp{bframes, keyint};
+  gop_distributor disp{bframes, keyint};
 
   if (!yuv.open(input_yuv_path, input_width, input_height, 8))
   {

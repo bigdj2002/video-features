@@ -20,10 +20,10 @@ struct gop_output
   bool is_leading;
 };
 
-class gop_dispenser
+class gop_distributor
 {
 public:
-  gop_dispenser(int bframes, int keyint);
+  gop_distributor(int bframes, int keyint);
 
   // put images in display order
   void put(std::shared_ptr<uint8_t> image);

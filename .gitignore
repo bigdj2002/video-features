@@ -1,5 +1,5 @@
 # vscode setting
-.vscode/
+.vscode
 
 # output json file
 .json

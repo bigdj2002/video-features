@@ -32,7 +32,7 @@ protected:
   void SetUp() override
   {
     // file.open("/mnt/sDisk2/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv", std::ios::binary);
-    file.open("/source/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv", std::ios::binary);
+    file.open("/mnt/sDisk2/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv", std::ios::binary);
     if (!file.is_open())
     {
       GTEST_SKIP() << "File open failed";

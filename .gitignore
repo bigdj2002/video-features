@@ -2,4 +2,4 @@
 .vscode
 
 # output json file
-.json
+*.json

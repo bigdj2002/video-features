@@ -21,9 +21,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   common
-  glcm
-  ncc
-  tc-freq
+  features
   libmath
   GTest::gtest_main
 )

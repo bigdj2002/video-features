@@ -31,8 +31,8 @@ protected:
 
   void SetUp() override
   {
-    // file.open("/mnt/sDisk2/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv", std::ios::binary);
-    file.open("/mnt/sDisk2/jvet-test-sequences/ctc/sdr/MarketPlace_1920x1080_60fps_8bit_420.yuv", std::ios::binary);
+    file.open("/mnt/sDisk2/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv", std::ios::binary);
+    // file.open("/mnt/sDisk2/jvet-test-sequences/ctc/sdr/MarketPlace_1920x1080_60fps_8bit_420.yuv", std::ios::binary);
     if (!file.is_open())
     {
       GTEST_SKIP() << "File open failed";
@@ -40,7 +40,7 @@ protected:
 
     tc_params params;
     int frame_y_size = frame_width * frame_height;
-    int frame_yuv_size = (frame_y_size * 3) >> 1; // Tested in only 420
+    int frame_yuv_size = (frame_y_size * 3) >> 1; // Tested in only YUV420p
     int gop_size = frame_yuv_size * 3;
 
     while (true)
@@ -69,6 +69,8 @@ protected:
       std::unique_ptr<uint8_t[]> ref1_frame(new uint8_t[frame_y_size]);
       std::memcpy(ref1_frame.get(), frame.get() + (frame_yuv_size * 2), frame_y_size);
       params.ref1_frames.push_back(std::move(ref1_frame));
+
+      file.seekg(-2 * frame_yuv_size, std::ios_base::cur);
     }
 
     params.ref0_stride = frame_width;

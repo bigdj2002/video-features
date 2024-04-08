@@ -1,9 +1,12 @@
 
-project(tc-freq)
+project(features)
 
 add_library(
-  ${PROJECT_NAME} 
+  ${PROJECT_NAME}
+  ${CMAKE_CURRENT_SOURCE_DIR}/sources/glcm.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/sources/ncc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/sources/tc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/sources/nlp.cpp
 )
 
 find_package(PkgConfig REQUIRED)
@@ -17,13 +20,16 @@ find_library(
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   libmath
+  xsimd
   ${FFTW_LIBRARIES}
   ${FFTW_FLOAT_THREADS_LIB}
+  ${OpenCV_LIBS}
 )
 
 target_include_directories(${PROJECT_NAME}
   PRIVATE PkgConfig::FFTW
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../xsimd/include/xsimd
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE 
@@ -34,5 +40,5 @@ target_compile_options(${PROJECT_NAME} PRIVATE
   -mssse3 
   -msse4.1 
   -fno-tree-vectorize
-  -O3
+  # -O3
 )

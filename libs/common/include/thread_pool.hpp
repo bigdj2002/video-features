@@ -1,9 +1,3 @@
-/**
- * @author jess@mediaexcel.com
- * @version 1.0.0
- * @brief thread pool class. fairly stable but far slower than c version(hera_threads.h)
-*/
-
 #pragma once
 
 #include <condition_variable>

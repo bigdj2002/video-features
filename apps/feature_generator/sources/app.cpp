@@ -17,6 +17,7 @@
 #include "glcm.h"
 #include "ncc.h"
 #include "tc.h"
+#include "nlp.h"
 #include "yuv_reader.h"
 #include "StopWatch.hpp"
 
@@ -76,6 +77,7 @@ void App::derive_features()
   glcm_feat.resize(picture_counts * num_glcm_features);
   ncc_feat.resize(picture_counts * 5);
   tc_feat.resize(picture_counts * 5);
+  nlp_feat.resize(picture_counts * 5);
 
   gop_output gout;
 
@@ -112,6 +114,14 @@ void App::derive_features()
       lf.emplace_back(tp.EnqueueJob(
           &App::derive_tc, this,
           tc_feat.data() + idx * 5,
+          gout.pictures[i].image,
+          gout.pictures[i].ref_image0,
+          gout.pictures[i].ref_image1));
+
+      // NLP
+      lf.emplace_back(tp.EnqueueJob(
+          &App::derive_nlp, this,
+          nlp_feat.data() + idx * 5,
           gout.pictures[i].image,
           gout.pictures[i].ref_image0,
           gout.pictures[i].ref_image1));
@@ -162,7 +172,7 @@ void App::derive_ncc(
   {
     if (enable_simd)
     {
-      auto ncc0 = ncc::ncc_simd(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height, 32);
+      auto ncc0 = ncc::ncc_simd(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height, processed_blk_size);
       a[0] = math_util::Mean_simd(ncc0);
       a[1] = math_util::StandardDeviation_simd(ncc0);
       a[2] = math_util::ShannonEntropy_simd(ncc0);
@@ -171,7 +181,7 @@ void App::derive_ncc(
     }
     else
     {
-      auto ncc0 = ncc::ncc(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height, 32);
+      auto ncc0 = ncc::ncc(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height, processed_blk_size);
       a[0] = math_util::Mean(ncc0);
       a[1] = math_util::StandardDeviation(ncc0);
       a[2] = math_util::ShannonEntropy(ncc0);
@@ -184,7 +194,7 @@ void App::derive_ncc(
   {
     if (enable_simd)
     {
-      auto ncc1 = ncc::ncc_simd(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height, 32);
+      auto ncc1 = ncc::ncc_simd(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height, processed_blk_size);
       b[0] = math_util::Mean_simd(ncc1);
       b[1] = math_util::StandardDeviation_simd(ncc1);
       b[2] = math_util::ShannonEntropy_simd(ncc1);
@@ -193,7 +203,7 @@ void App::derive_ncc(
     }
     else
     {
-      auto ncc1 = ncc::ncc(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height, 32);
+      auto ncc1 = ncc::ncc(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height, processed_blk_size);
       b[0] = math_util::Mean(ncc1);
       b[1] = math_util::StandardDeviation(ncc1);
       b[2] = math_util::ShannonEntropy(ncc1);
@@ -294,6 +304,80 @@ void App::derive_tc(
   }
 }
 
+void App::derive_nlp(
+    double *storage,
+    std::shared_ptr<uint8_t> image,
+    std::shared_ptr<uint8_t> ref_image0,
+    std::shared_ptr<uint8_t> ref_image1)
+{
+  double a[5], b[5];
+
+  if (ref_image0 != nullptr)
+  {
+    // if (enable_simd) // TODO: Not implemented yet
+    if (0)
+    {
+      auto nlp0 = nlp::nlp_simd(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height, processed_blk_size);
+      a[0] = math_util::Mean_simd(nlp0);
+      a[1] = math_util::StandardDeviation_simd(nlp0);
+      a[2] = math_util::ShannonEntropy_simd(nlp0);
+      a[3] = math_util::Skewness_simd(nlp0);
+      a[4] = math_util::Kurtosis_simd(nlp0);
+    }
+    else
+    {
+      auto nlp0 = nlp::nlp(ref_image0.get(), input_width, image.get(), input_width, input_width, input_height, processed_blk_size);
+      a[0] = math_util::Mean(nlp0);
+      a[1] = math_util::StandardDeviation(nlp0);
+      a[2] = math_util::ShannonEntropy(nlp0);
+      a[3] = math_util::Skewness(nlp0);
+      a[4] = math_util::Kurtosis(nlp0);
+    }
+  }
+
+  if (ref_image1 != nullptr)
+  {
+    // if (enable_simd) // TODO: Not implemented yet
+    if (0)
+    {
+      auto nlp1 = nlp::nlp_simd(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height, processed_blk_size);
+      b[0] = math_util::Mean_simd(nlp1);
+      b[1] = math_util::StandardDeviation_simd(nlp1);
+      b[2] = math_util::ShannonEntropy_simd(nlp1);
+      b[3] = math_util::Skewness_simd(nlp1);
+      b[4] = math_util::Kurtosis_simd(nlp1);
+    }
+    else
+    {
+      auto nlp1 = nlp::nlp(ref_image1.get(), input_width, image.get(), input_width, input_width, input_height, processed_blk_size);
+      b[0] = math_util::Mean(nlp1);
+      b[1] = math_util::StandardDeviation(nlp1);
+      b[2] = math_util::ShannonEntropy(nlp1);
+      b[3] = math_util::Skewness(nlp1);
+      b[4] = math_util::Kurtosis(nlp1);
+    }
+  }
+
+  if (ref_image0 == nullptr && ref_image1 == nullptr)
+  {
+    storage[0] = 1.0;
+    storage[1] = storage[2] = storage[3] = storage[4] = 0.0;
+  }
+  else if (ref_image0 == nullptr)
+  {
+    std::memcpy(storage, b, sizeof(b));
+  }
+  else if (ref_image1 == nullptr)
+  {
+    std::memcpy(storage, a, sizeof(a));
+  }
+  else
+  {
+    double *p = a[0] > b[0] ? a : b;
+    std::memcpy(storage, p, sizeof(a));
+  }
+}
+
 bool App::parse_config(int argc, char **argv)
 {
   namespace po = df::program_options_lite;
@@ -304,11 +388,12 @@ bool App::parse_config(int argc, char **argv)
   opts.addOptions()
   ("help", do_help, false, "Print help text")
   ("-i", input_yuv_path, std::string{}, "Input yuv file path")
-  ("-w", input_width, 0, "Input width")
-  ("-h", input_height, 0, "Input height")
-  ("-f", input_fps, 0.0, "Input fps")
-  ("-t", num_threads, 40, "Number of thread used")
-  ("-s", enable_simd, 1, "Enabling SIMD")
+  ("-w", input_width, 1920, "Input width (Default: 1920)")
+  ("-h", input_height, 1080, "Input height (Default: 1080)")
+  ("-f", input_fps, 30.0, "Input fps (Default: 30)")
+  ("-b", processed_blk_size, 32, "Processed block size (Default: 32)")
+  ("-t", num_threads, 40, "Number of thread used (Default: 40)")
+  ("-s", enable_simd, 0, "Enabling SIMD (Default: 0)")
   ("-o", output_json_path, std::string{}, "Output json file path");
 
   po::setDefaults(opts);
@@ -337,30 +422,37 @@ void App::save_as_json()
   Json::Value root;
   Json::Value frames = Json::Value{Json::arrayValue};
 
-  for(uint32_t i = 0 ; i < picture_counts; ++i)
+  for (uint32_t i = 0; i < picture_counts; ++i)
   {
     Json::Value frame;
 
     Json::Value glcm;
-    for(int k = 0 ; k < num_glcm_features; k++)
+    for (int k = 0; k < num_glcm_features; k++)
     {
       glcm[k] = glcm_feat[i * num_glcm_features + k];
     }
     frame["glcm"] = glcm;
 
     Json::Value ncc;
-    for(int k = 0 ; k < 5; k++)
+    for (int k = 0; k < 5; k++)
     {
       ncc[k] = ncc_feat[i * 5 + k];
     }
     frame["ncc"] = ncc;
-    
+
     Json::Value tc;
-    for(int k = 0 ; k < 5; k++)
+    for (int k = 0; k < 5; k++)
     {
       tc[k] = tc_feat[i * 5 + k];
     }
     frame["tc"] = tc;
+
+    Json::Value nlp;
+    for (int k = 0; k < 5; k++)
+    {
+      nlp[k] = nlp_feat[i * 5 + k];
+    }
+    frame["nlp"] = nlp;
 
     frames.append(frame);
   }

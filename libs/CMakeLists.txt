@@ -1,6 +1,4 @@
 add_subdirectory(common)
-add_subdirectory(glcm)
+add_subdirectory(features)
 add_subdirectory(libmath)
-add_subdirectory(ncc)
-add_subdirectory(tc-freq)
 add_subdirectory(xsimd)

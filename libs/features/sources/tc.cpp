@@ -547,9 +547,13 @@ namespace freq
 
         for (int k = 0; k < 8; ++k)
         {
-          std::memcpy(&block_cache1[8 * k], &ref_image[(k + iy) * ref_stride + ix], 8);
-          std::memcpy(&block_cache2[8 * k], &tar_image[(k + iy) * tar_stride + ix], 8);
+          for (int l = 0; l < 8; ++l)
+          {
+            block_cache1[8 * k + l] = static_cast<int32_t>(ref_image[(k + iy) * ref_stride + ix + l]);
+            block_cache2[8 * k + l] = static_cast<int32_t>(tar_image[(k + iy) * tar_stride + ix + l]);
+          }
         }
+
         auto c1 = dct8x8(block_cache1);
         auto c2 = dct8x8(block_cache2);
 
@@ -586,8 +590,8 @@ namespace freq
         {
           for (int l = 0; l < 8; ++l)
           {
-            block_cache1[8 * k + l] = static_cast<int32_t>(ref_image[(k + iy) * 8 + ix + l]);
-            block_cache2[8 * k + l] = static_cast<int32_t>(tar_image[(k + iy) * 8 + ix + l]);
+            block_cache1[8 * k + l] = static_cast<int32_t>(ref_image[(k + iy) * ref_stride + ix + l]);
+            block_cache2[8 * k + l] = static_cast<int32_t>(tar_image[(k + iy) * tar_stride + ix + l]);
           }
         }
 

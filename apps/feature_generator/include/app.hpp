@@ -33,6 +33,12 @@ private:
       std::shared_ptr<uint8_t> ref_image0,
       std::shared_ptr<uint8_t> ref_image1);
 
+  void derive_nlp(
+      double *storage,
+      std::shared_ptr<uint8_t> image,
+      std::shared_ptr<uint8_t> ref_image0,
+      std::shared_ptr<uint8_t> ref_image1);
+
   void save_as_json();
 
 private:
@@ -40,6 +46,7 @@ private:
   int input_width;
   int input_height;
   double input_fps;
+  int processed_blk_size;
   int num_threads;
   int enable_simd;
   std::string output_json_path;
@@ -51,6 +58,6 @@ private:
   static constexpr int glcm_angles = 4;
   static constexpr int glcm_distances = 3;
 
-  std::vector<double> glcm_feat, ncc_feat, tc_feat;
+  std::vector<double> glcm_feat, ncc_feat, tc_feat, nlp_feat;
   uint32_t picture_counts = 0;
 };

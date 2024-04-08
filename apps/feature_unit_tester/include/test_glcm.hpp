@@ -32,8 +32,8 @@ protected:
 
   void SetUp() override
   {
-    // file.open("/mnt/sDisk2/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv", std::ios::binary);
-    file.open("/source/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv", std::ios::binary);
+    file.open("/mnt/sDisk2/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv", std::ios::binary);
+    // file.open("/source/jvet-test-sequences/ctc/sdr/BasketballDrive_1920x1080_50.yuv", std::ios::binary);
     if (!file.is_open())
     {
       GTEST_SKIP() << "File open failed";
@@ -41,7 +41,7 @@ protected:
 
     constexpr double qpi = 3.14159265358979323846 / 4.0;
     int frame_y_size = frame_width * frame_height;
-    int frame_yuv_size = (frame_y_size * 3) >> 1; // Tested in only 420
+    int frame_yuv_size = (frame_y_size * 3) >> 1; // Tested in only YUV420p
 
     for (int k = 0; k < 12; ++k)
     {

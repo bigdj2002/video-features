@@ -39,6 +39,7 @@ private:
       std::shared_ptr<uint8_t> ref_image0,
       std::shared_ptr<uint8_t> ref_image1);
 
+  void derive_pca();
   void save_as_json();
 
 private:
@@ -47,17 +48,19 @@ private:
   int input_height;
   double input_fps;
   int processed_blk_size;
+  int pca_output_num;
+  std::string target_temporal_ref_frames;
   int num_threads;
   int enable_simd;
   std::string output_json_path;
 
-  static constexpr int bframes = 3;
-  static constexpr double keyframe_sec = 1.0;
+  int bframes;
+  double keyframe_sec;
   int keyint;
 
   static constexpr int glcm_angles = 4;
-  static constexpr int glcm_distances = 3;
+  static constexpr int glcm_distances = 5;
 
-  std::vector<double> glcm_feat, ncc_feat, tc_feat, nlp_feat;
+  std::vector<double> glcm_feat, ncc_feat, tc_feat, nlp_feat, pca_feat;
   uint32_t picture_counts = 0;
 };

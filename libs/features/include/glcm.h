@@ -29,13 +29,13 @@ namespace glcm
 
   enum property
   {
-    dissimilarity = 0,
-    contrast,
+    contrast = 0,
     homogeneity,
     energy,
     correlation,
     entropy,
-    NUM_PROPERTIES
+    NUM_PROPERTIES,
+    dissimilarity,
   };
 
   double graycoprops(

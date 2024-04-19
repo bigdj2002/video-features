@@ -63,8 +63,8 @@ static double compute_nlp(
     const std::vector<uint8_t> &tar,
     int ddof)
 {
-  int width = 32;
-  int height = 32;
+  int width = std::sqrt(ref.size());
+  int height = std::sqrt(ref.size());
   int channels = 1;
 
   cv::Mat ref_mat(height, width, CV_8UC(channels), const_cast<uint8_t *>(ref.data()));
@@ -76,8 +76,8 @@ static double compute_nlp(
   ref_image.convertTo(ref_image, CV_32F);
   tar_image.convertTo(tar_image, CV_32F);
 
-  laplacian::LaplacianPyramid ref_pyramid(ref_image, 4);
-  laplacian::LaplacianPyramid tar_pyramid(tar_image, 4);
+  laplacian::LaplacianPyramid ref_pyramid(ref_image, 2);
+  laplacian::LaplacianPyramid tar_pyramid(tar_image, 2);
   auto ref_pyramid_vector = ref_pyramid.getPyramid();
   auto tar_pyramid_vector = tar_pyramid.getPyramid();
   if (ref_pyramid_vector.size() != tar_pyramid_vector.size())
@@ -188,8 +188,8 @@ namespace laplacian
 
   LaplacianPyramid::LaplacianPyramid(const cv::Mat &image, uint8_t compressions, float quantization) : _laplacianPlanesQuantized(), _kernel(kernel())
   {
-    // const auto scaledImage = applyValidScaling(image, compressions);
-    const auto gaussians = reduceToGaussians(image, _kernel, compressions);
+    const auto scaledImage = applyValidScaling(image, compressions);
+    const auto gaussians = reduceToGaussians(scaledImage, _kernel, compressions);
     const auto upsampledGaussians = upsample(gaussians, _kernel);
     const auto laplacianPlanes = buildLaplacianPlanes(gaussians, upsampledGaussians);
     _laplacianPlanesQuantized = quantization == 0 ? laplacianPlanes : quantize(laplacianPlanes, quantization);
@@ -327,14 +327,14 @@ namespace laplacian
     gaussians.push_back(image);
     cv::Mat actual = image;
 
-    const double Mc = (static_cast<float>(actual.cols)) / std::pow(2.0f, compressions);
-    const double Mr = (static_cast<float>(actual.rows)) / std::pow(2.0f, compressions);
+    const double Mc = (static_cast<float>(actual.cols - 1.0f)) / std::pow(2.0f, compressions);
+    const double Mr = (static_cast<float>(actual.rows - 1.0f)) / std::pow(2.0f, compressions);
 
     for (uint8_t level = 1; level < compressions; level++)
     {
       actual = reduceGaussian(actual, kernel,
-                              static_cast<int>(Mr * std::pow(2, compressions - level)),
-                              static_cast<int>(Mc * std::pow(2, compressions - level)));
+                              static_cast<int>(Mr * std::pow(2, compressions - level) - 3),
+                              static_cast<int>(Mc * std::pow(2, compressions - level) - 3));
       gaussians.push_back(actual);
     }
 

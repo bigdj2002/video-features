@@ -4,8 +4,8 @@ struct gop_struct_node
 {
   int disp_idx;
   int dec_idx;
-  int ref0;   // display_order
-  int ref1;   // display_order
+  int ref0; // display_order
+  int ref1; // display_order
 };
 
 static gop_struct_node g_pic_struct[4][4];
@@ -20,7 +20,7 @@ gop_distributor::gop_distributor(int bframes, int keyint)
 
   g_pic_struct[1][0] = {.disp_idx = 1, .dec_idx = 0, .ref0 = -1, .ref1 = -1};
   g_pic_struct[1][1] = {.disp_idx = 0, .dec_idx = 1, .ref0 = -1, .ref1 = 1};
-  
+
   g_pic_struct[2][0] = {.disp_idx = 2, .dec_idx = 0, .ref0 = -1, .ref1 = -1};
   g_pic_struct[2][1] = {.disp_idx = 0, .dec_idx = 1, .ref0 = -1, .ref1 = 2};
   g_pic_struct[2][2] = {.disp_idx = 1, .dec_idx = 2, .ref0 = 0, .ref1 = 2};
@@ -29,6 +29,12 @@ gop_distributor::gop_distributor(int bframes, int keyint)
   g_pic_struct[3][1] = {.disp_idx = 1, .dec_idx = 1, .ref0 = -1, .ref1 = 3};
   g_pic_struct[3][2] = {.disp_idx = 0, .dec_idx = 2, .ref0 = -1, .ref1 = 1};
   g_pic_struct[3][3] = {.disp_idx = 2, .dec_idx = 3, .ref0 = 1, .ref1 = 3};
+
+  g_pic_struct[4][0] = {.disp_idx = 4, .dec_idx = 0, .ref0 = -1, .ref1 = -1};
+  g_pic_struct[4][1] = {.disp_idx = 2, .dec_idx = 1, .ref0 = -1, .ref1 = -1};
+  g_pic_struct[4][2] = {.disp_idx = 0, .dec_idx = 2, .ref0 = -1, .ref1 = -1};
+  g_pic_struct[4][3] = {.disp_idx = 1, .dec_idx = 3, .ref0 = -1, .ref1 = -1};
+  g_pic_struct[4][4] = {.disp_idx = 3, .dec_idx = 4, .ref0 = -1, .ref1 = -1};
 }
 
 void gop_distributor::put(std::shared_ptr<uint8_t> image)
@@ -51,18 +57,18 @@ void gop_distributor::put(std::shared_ptr<uint8_t> image)
   {
     gop_images[num_holding_pictures++] = image;
   }
-  
+
   ++poc;
 }
 
-void gop_distributor::terminate() 
+void gop_distributor::terminate()
 {
-  dispense_gop(); 
+  dispense_gop();
 }
 
-bool gop_distributor::dequeue(gop_output& out)
+bool gop_distributor::dequeue(gop_output &out)
 {
-  if(fifo_gop.empty())
+  if (fifo_gop.empty())
   {
     return false;
   }
@@ -81,10 +87,10 @@ void gop_distributor::dispense_gop()
 
   std::shared_ptr<uint8_t> prev_ref = last_image;
   gop_output gop = {};
-  
+
   gop.num_pictures = num_holding_pictures;
   gop.is_leading = leading_gop;
-  
+
   if (leading_gop)
   {
     gop.pictures[0].poc = gop_start_poc;
@@ -95,19 +101,19 @@ void gop_distributor::dispense_gop()
     --num_holding_pictures;
   }
 
-  const gop_struct_node* pGS = &g_pic_struct[num_holding_pictures - 1][0];
+  const gop_struct_node *pGS = &g_pic_struct[num_holding_pictures - 1][0];
   int offset = leading_gop ? 1 : 0;
 
-  for(int i = 0; i < num_holding_pictures; ++i)
+  for (int i = 0; i < num_holding_pictures; ++i)
   {
     int oidx = pGS[i].disp_idx + offset;
-    
+
     gop.pictures[oidx].poc = gop_start_poc + oidx;
     gop.pictures[oidx].image = gop_images[oidx];
     gop.pictures[oidx].ref_image0 = (pGS[i].ref0 == -1) ? prev_ref : gop_images[pGS[i].ref0 + offset];
     gop.pictures[oidx].ref_image1 = nullptr;
 
-    if(pGS[i].ref0 != -1 || pGS[i].ref1 != -1)
+    if (pGS[i].ref0 != -1 || pGS[i].ref1 != -1)
     {
       gop.pictures[oidx].ref_image1 = (pGS[i].ref1 == -1) ? prev_ref : gop_images[pGS[i].ref1 + offset];
     }
@@ -116,7 +122,7 @@ void gop_distributor::dispense_gop()
   last_image = gop.pictures[gop.num_pictures - 1].image;
   fifo_gop.emplace(std::forward<gop_output>(gop));
 
-  for(int i = 0 ; i < (int)(sizeof(gop_images)/ sizeof(decltype(gop_images[0]))); ++i)
+  for (int i = 0; i < (int)(sizeof(gop_images) / sizeof(decltype(gop_images[0]))); ++i)
   {
     gop_images[i] = nullptr;
   }

@@ -7,7 +7,7 @@
 #include <cassert>
 #include <sstream>
 
-#include "app.hpp"
+#include "processor.hpp"
 #include "gop_distributor.hpp"
 
 #include "common_utils.h"
@@ -18,6 +18,7 @@
 #include "ncc.h"
 #include "tc.h"
 #include "nlp.h"
+#include "pca.h"
 #include "yuv_reader.h"
 #include "StopWatch.hpp"
 
@@ -37,6 +38,8 @@ int App::run(int argc, char **argv)
   }
 
   derive_features();
+
+  derive_pca();
 
   save_as_json();
 
@@ -385,15 +388,18 @@ bool App::parse_config(int argc, char **argv)
   bool do_help = false;
 
   po::Options opts;
-  opts.addOptions()
-  ("help", do_help, false, "Print help text")
+  opts.addOptions()("help", do_help, false, "Print help text")
   ("-i", input_yuv_path, std::string{}, "Input yuv file path")
   ("-w", input_width, 1920, "Input width (Default: 1920)")
   ("-h", input_height, 1080, "Input height (Default: 1080)")
-  ("-f", input_fps, 30.0, "Input fps (Default: 30)")
-  ("-b", processed_blk_size, 32, "Processed block size (Default: 32)")
+  ("-f", input_fps, 25.0, "Input fps (Default: 30)")
+  ("-b", bframes, 0, "Number of B-frames in a GOP (Default: 3)")
+  ("-k", keyframe_sec, 1.0, "Interval of a key frame in sec (Default: 1.0)")
+  ("-bs", processed_blk_size, 32, "Processed block size (Default: 32)")
+  ("-p", pca_output_num, 1, "Output dimension after PCA process (Default: 1)")
+  ("-r", target_temporal_ref_frames, std::string{}, "Output dimension after PCA process (Default: 1)")
   ("-t", num_threads, 40, "Number of thread used (Default: 40)")
-  ("-s", enable_simd, 0, "Enabling SIMD (Default: 0)")
+  ("-s", enable_simd, 1, "Enabling SIMD (Default: 0)")
   ("-o", output_json_path, std::string{}, "Output json file path");
 
   po::setDefaults(opts);
@@ -415,12 +421,68 @@ bool App::parse_config(int argc, char **argv)
   return true;
 }
 
+void App::derive_pca()
+{
+  constexpr int num_glcm_features = glcm::NUM_PROPERTIES * glcm_angles * glcm_distances;
+  constexpr int num_rows = 23;
+  constexpr int num_cols = 5;
+  PCA pca(5);
+  std::vector<std::vector<double>> x;
+
+  x.resize(num_rows, std::vector<double>(num_cols, 0));
+  pca_feat.resize(picture_counts * num_rows * pca_output_num);
+
+  for (uint32_t i = 0; i < picture_counts; ++i)
+  {
+    std::vector<double> features;
+    for (int k = 0; k < num_glcm_features; ++k)
+    {
+      features.push_back(glcm_feat[i * num_glcm_features + k]);
+    }
+    for (int k = 0; k < 5; ++k)
+    {
+      features.push_back(ncc_feat[i * 5 + k]);
+    }
+    for (int k = 0; k < 5; ++k)
+    {
+      features.push_back(tc_feat[i * 5 + k]);
+    }
+    for (int k = 0; k < 5; ++k)
+    {
+      features.push_back(nlp_feat[i * 5 + k]);
+    }
+
+    for (int r = 0; r < num_rows; ++r)
+    {
+      for (int c = 0; c < num_cols; ++c)
+      {
+        x[r][c] = features[r * num_cols + c];
+      }
+    }
+
+    std::vector<std::vector<double>> pca_result = pca.fit_transform(x);
+    for (int r = 0; r < num_rows; ++r)
+    {
+      for (int j = 0; j < pca_output_num; ++j)
+      {
+        pca_feat[i * num_rows * pca_output_num + r * pca_output_num + j] = pca_result[r][j];
+      }
+    }
+
+    for (auto &row : x)
+    {
+      std::fill(row.begin(), row.end(), 0);
+    }
+  }
+}
+
 void App::save_as_json()
 {
   constexpr int num_glcm_features = glcm::NUM_PROPERTIES * glcm_angles * glcm_distances;
-
   Json::Value root;
   Json::Value frames = Json::Value{Json::arrayValue};
+
+  constexpr int num_rows = 23;
 
   for (uint32_t i = 0; i < picture_counts; ++i)
   {
@@ -454,8 +516,16 @@ void App::save_as_json()
     }
     frame["nlp"] = nlp;
 
+    Json::Value pca_data;
+    for (int k = 0; k < num_rows * pca_output_num; k++)
+    {
+      pca_data[k] = pca_feat[i * num_rows * pca_output_num + k];
+    }
+    frame["pca_data"] = pca_data;
+
     frames.append(frame);
   }
+
   root["frames"] = frames;
 
   std::ofstream f{output_json_path};

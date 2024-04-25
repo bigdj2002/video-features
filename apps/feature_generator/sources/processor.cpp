@@ -92,17 +92,19 @@ void App::derive_features()
       assert(idx >= 0 && idx < (int)picture_counts);
 
       // GLCM
-      for (int k = 0; k < glcm_angles * glcm_distances; ++k)
+      for (int i = 0; i < glcm_angles; ++i)
       {
-        int dist = 1 + 2 * (k / glcm_angles);
-        double angle = qpi * (k % glcm_angles);
-
-        lf.emplace_back(tp.EnqueueJob(
-            &App::derive_glcm, this,
-            glcm_feat.data() + idx * num_glcm_features + k * glcm::NUM_PROPERTIES,
-            gout.pictures[i].image,
-            dist,
-            angle));
+        double angle = qpi * i;
+        for (int j = 0; j < glcm_distances; ++j)
+        {
+          int dist = 1 + 2 * j;
+          lf.emplace_back(tp.EnqueueJob(
+              &App::derive_glcm, this,
+              glcm_feat.data() + idx * num_glcm_features + (i * glcm_distances) + (j *  glcm::NUM_PROPERTIES),
+              gout.pictures[i].image,
+              dist,
+              angle));
+        }
       }
 
       // NCC
@@ -423,33 +425,33 @@ bool App::parse_config(int argc, char **argv)
 
 void App::derive_pca()
 {
-  constexpr int num_glcm_features = glcm::NUM_PROPERTIES * glcm_angles * glcm_distances;
-  constexpr int num_rows = 23;
+  constexpr int num_prop = glcm::NUM_PROPERTIES;
+  constexpr int num_rows = glcm_angles * glcm_distances + 3 /* ncc, tc, nlp */;
   constexpr int num_cols = 5;
   PCA pca(5);
   std::vector<std::vector<double>> x;
+  std::vector<std::vector<double>> temporal_features = {nlp_feat, tc_feat, ncc_feat};
 
   x.resize(num_rows, std::vector<double>(num_cols, 0));
   pca_feat.resize(picture_counts * num_rows * pca_output_num);
 
-  for (uint32_t i = 0; i < picture_counts; ++i)
+  for (uint32_t picCnt = 0; picCnt < picture_counts; ++picCnt)
   {
     std::vector<double> features;
-    for (int k = 0; k < num_glcm_features; ++k)
+    for (int i = 0; i < glcm_angles; ++i)
     {
-      features.push_back(glcm_feat[i * num_glcm_features + k]);
-    }
-    for (int k = 0; k < 5; ++k)
-    {
-      features.push_back(ncc_feat[i * 5 + k]);
-    }
-    for (int k = 0; k < 5; ++k)
-    {
-      features.push_back(tc_feat[i * 5 + k]);
-    }
-    for (int k = 0; k < 5; ++k)
-    {
-      features.push_back(nlp_feat[i * 5 + k]);
+      for (int j = 0; j < num_prop * glcm_distances; ++j)
+      {
+        features.push_back(glcm_feat[i * num_prop * glcm_distances + j]);
+      }
+
+      if (i < glcm_angles - 1)
+      {
+        for (int j = 0; j < num_cols; ++j)
+        {
+          features.push_back(temporal_features[i][picCnt * num_cols + j]);
+        }
+      }
     }
 
     for (int r = 0; r < num_rows; ++r)
@@ -465,13 +467,8 @@ void App::derive_pca()
     {
       for (int j = 0; j < pca_output_num; ++j)
       {
-        pca_feat[i * num_rows * pca_output_num + r * pca_output_num + j] = pca_result[r][j];
+        pca_feat[picCnt * num_rows * pca_output_num + r * pca_output_num + j] = pca_result[r][j];
       }
-    }
-
-    for (auto &row : x)
-    {
-      std::fill(row.begin(), row.end(), 0);
     }
   }
 }
@@ -493,7 +490,7 @@ void App::save_as_json()
     {
       glcm[k] = glcm_feat[i * num_glcm_features + k];
     }
-    frame["glcm"] = glcm;
+    // frame["glcm"] = glcm;
 
     Json::Value ncc;
     for (int k = 0; k < 5; k++)

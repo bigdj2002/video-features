@@ -65,4 +65,5 @@ pkg-config --modversion opencv4
 # Cleanup: Remove downloaded files after installation
 cd ../../../
 rm -rf "$CLONE_DIR"
+rm -rf "$PREFIX_DIR"
 echo "OpenCV installation complete and source files removed."

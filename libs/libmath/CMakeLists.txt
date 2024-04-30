@@ -6,6 +6,7 @@ add_library(${PROJECT_NAME} SHARED
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   xsimd
+  armadillo
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC 

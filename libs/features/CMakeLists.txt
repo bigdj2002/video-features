@@ -11,7 +11,6 @@ add_library(
 )
 
 find_package(PkgConfig REQUIRED)
-find_package(Armadillo REQUIRED)
 
 pkg_search_module(FFTW REQUIRED fftw3 IMPORTED_TARGET)
 find_library(
@@ -23,17 +22,17 @@ find_library(
 target_link_libraries(${PROJECT_NAME} PRIVATE
   libmath
   xsimd
+  armadillo
   ${FFTW_LIBRARIES}
   ${FFTW_FLOAT_THREADS_LIB}
   ${OpenCV_LIBS}
-  ${ARMADILLO_LIBRARIES}
 )
 
 target_include_directories(${PROJECT_NAME}
   PRIVATE PkgConfig::FFTW
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/../xsimd/include/xsimd
-  ${ARMADILLO_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../armadillo/include/
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE 

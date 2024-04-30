@@ -1,3 +1,4 @@
+add_subdirectory(armadillo)
 add_subdirectory(common)
 add_subdirectory(features)
 add_subdirectory(libmath)

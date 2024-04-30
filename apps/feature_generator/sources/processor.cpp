@@ -30,12 +30,7 @@ int App::run(int argc, char **argv)
   if (!parse_config(argc, argv))
     return -1;
 
-  keyint = std::max(int(keyframe_sec * input_fps + 0.5), 2 + bframes);
-  int rem = (keyint - 2 - bframes) % (bframes + 1);
-  if (rem != 0)
-  {
-    keyint += (bframes + 1 - rem);
-  }
+  keyint = int(keyframe_sec * input_fps + 0.5);
 
   derive_features();
 
@@ -49,7 +44,7 @@ int App::run(int argc, char **argv)
 void App::derive_features()
 {
   yuv_reader yuv{};
-  gop_distributor disp{bframes, keyint};
+  gop_distributor disp{keyint};
 
   if (!yuv.open(input_yuv_path, input_width, input_height, 8))
   {
@@ -82,26 +77,26 @@ void App::derive_features()
   tc_feat.resize(picture_counts * 5);
   nlp_feat.resize(picture_counts * 5);
 
-  gop_output gout;
+  gop_output gout{keyint};
 
   while (disp.dequeue(gout))
   {
     for (int i = 0; i < gout.num_pictures; ++i)
     {
-      int idx = gout.pictures[i].poc;
-      assert(idx >= 0 && idx < (int)picture_counts);
-
+      int poc = gout.pictures[i]->poc;
+      assert(poc >= 0 && poc < (int)picture_counts);
+      
       // GLCM
-      for (int i = 0; i < glcm_angles; ++i)
+      for (int j = 0; j < glcm_angles; ++j)
       {
-        double angle = qpi * i;
-        for (int j = 0; j < glcm_distances; ++j)
+        double angle = qpi * j;
+        for (int k = 0; k < glcm_distances; ++k)
         {
-          int dist = 1 + 2 * j;
+          int dist = 1 + 2 * k;
           lf.emplace_back(tp.EnqueueJob(
               &App::derive_glcm, this,
-              glcm_feat.data() + idx * num_glcm_features + (i * glcm_distances) + (j *  glcm::NUM_PROPERTIES),
-              gout.pictures[i].image,
+              glcm_feat.data() + poc * num_glcm_features + (j * glcm_distances + k) * glcm::NUM_PROPERTIES,
+              gout.pictures[i]->image,
               dist,
               angle));
         }
@@ -110,26 +105,26 @@ void App::derive_features()
       // NCC
       lf.emplace_back(tp.EnqueueJob(
           &App::derive_ncc, this,
-          ncc_feat.data() + idx * 5,
-          gout.pictures[i].image,
-          gout.pictures[i].ref_image0,
-          gout.pictures[i].ref_image1));
+          ncc_feat.data() + poc * 5,
+          gout.pictures[i]->image,
+          gout.pictures[i]->ref_image0,
+          gout.pictures[i]->ref_image1));
 
       // TC
       lf.emplace_back(tp.EnqueueJob(
           &App::derive_tc, this,
-          tc_feat.data() + idx * 5,
-          gout.pictures[i].image,
-          gout.pictures[i].ref_image0,
-          gout.pictures[i].ref_image1));
+          tc_feat.data() + poc * 5,
+          gout.pictures[i]->image,
+          gout.pictures[i]->ref_image0,
+          gout.pictures[i]->ref_image1));
 
       // NLP
       lf.emplace_back(tp.EnqueueJob(
           &App::derive_nlp, this,
-          nlp_feat.data() + idx * 5,
-          gout.pictures[i].image,
-          gout.pictures[i].ref_image0,
-          gout.pictures[i].ref_image1));
+          nlp_feat.data() + poc * 5,
+          gout.pictures[i]->image,
+          gout.pictures[i]->ref_image0,
+          gout.pictures[i]->ref_image1));
     }
   }
 
@@ -378,7 +373,11 @@ void App::derive_nlp(
   }
   else
   {
-    double *p = a[0] > b[0] ? a : b;
+    double p[5];
+    for(int i=0; i<5; ++i)
+    {
+      p[i] = (a[i] + b[i]) / 2.0;
+    }
     std::memcpy(storage, p, sizeof(a));
   }
 }
@@ -395,13 +394,11 @@ bool App::parse_config(int argc, char **argv)
   ("-w", input_width, 1920, "Input width (Default: 1920)")
   ("-h", input_height, 1080, "Input height (Default: 1080)")
   ("-f", input_fps, 25.0, "Input fps (Default: 30)")
-  ("-b", bframes, 0, "Number of B-frames in a GOP (Default: 3)")
-  ("-k", keyframe_sec, 1.0, "Interval of a key frame in sec (Default: 1.0)")
+  ("-k", keyframe_sec, 2.0, "Interval of a key frame in sec (Default: 1.0)")
   ("-bs", processed_blk_size, 32, "Processed block size (Default: 32)")
-  ("-p", pca_output_num, 1, "Output dimension after PCA process (Default: 1)")
-  ("-r", target_temporal_ref_frames, std::string{}, "Output dimension after PCA process (Default: 1)")
-  ("-t", num_threads, 40, "Number of thread used (Default: 40)")
+  ("-p", pca_output_num, 2, "Output dimension after PCA process (Default: 1)")
   ("-s", enable_simd, 1, "Enabling SIMD (Default: 0)")
+  ("-t", num_threads, 40, "Number of thread used (Default: 40)")  
   ("-o", output_json_path, std::string{}, "Output json file path");
 
   po::setDefaults(opts);
@@ -445,12 +442,20 @@ void App::derive_pca()
         features.push_back(glcm_feat[i * num_prop * glcm_distances + j]);
       }
 
-      if (i < glcm_angles - 1)
+      // if (i < glcm_angles - 1)
+      // {
+      //   for (int j = 0; j < num_cols; ++j)
+      //   {
+      //     features.push_back(temporal_features[i][picCnt * num_cols + j]);
+      //   }
+      // }
+    }
+
+    for (int j = 0; j < 3; ++j)
+    {
+      for (int k = 0; k < num_cols; ++k)
       {
-        for (int j = 0; j < num_cols; ++j)
-        {
-          features.push_back(temporal_features[i][picCnt * num_cols + j]);
-        }
+        features.push_back(temporal_features[j][picCnt * num_cols + k]);
       }
     }
 
@@ -479,7 +484,7 @@ void App::save_as_json()
   Json::Value root;
   Json::Value frames = Json::Value{Json::arrayValue};
 
-  constexpr int num_rows = 23;
+  constexpr int num_rows = glcm_angles * glcm_distances + 3 /* ncc, tc, nlp */;
 
   for (uint32_t i = 0; i < picture_counts; ++i)
   {
@@ -497,24 +502,25 @@ void App::save_as_json()
     {
       ncc[k] = ncc_feat[i * 5 + k];
     }
-    frame["ncc"] = ncc;
+    // frame["ncc"] = ncc;
 
     Json::Value tc;
     for (int k = 0; k < 5; k++)
     {
       tc[k] = tc_feat[i * 5 + k];
     }
-    frame["tc"] = tc;
+    // frame["tc"] = tc;
 
     Json::Value nlp;
     for (int k = 0; k < 5; k++)
     {
       nlp[k] = nlp_feat[i * 5 + k];
     }
-    frame["nlp"] = nlp;
+    // frame["nlp"] = nlp;
 
     Json::Value pca_data;
-    for (int k = 0; k < num_rows * pca_output_num; k++)
+    int rem = (num_rows * pca_output_num) % 5;
+    for (int k = 0; k < num_rows * pca_output_num - rem; k++)
     {
       pca_data[k] = pca_feat[i * num_rows * pca_output_num + k];
     }

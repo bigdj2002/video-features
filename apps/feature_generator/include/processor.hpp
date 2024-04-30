@@ -49,12 +49,10 @@ private:
   double input_fps;
   int processed_blk_size;
   int pca_output_num;
-  std::string target_temporal_ref_frames;
   int num_threads;
   int enable_simd;
   std::string output_json_path;
 
-  int bframes;
   double keyframe_sec;
   int keyint;
 

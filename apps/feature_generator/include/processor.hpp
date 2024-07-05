@@ -44,11 +44,14 @@ private:
 
 private:
   std::string input_yuv_path;
+  int num_of_frames;
   int input_width;
   int input_height;
   double input_fps;
   int processed_blk_size;
-  int pca_output_num;
+  int enable_pca;
+  int enable_spatial_pca;
+  std::string pca_output_dim;
   int num_threads;
   int enable_simd;
   std::string output_json_path;

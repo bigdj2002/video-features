@@ -34,11 +34,54 @@ int App::run(int argc, char **argv)
 
   derive_features();
 
-  derive_pca();
+  if (enable_pca)
+    derive_pca();
 
   save_as_json();
 
   return 0;
+}
+
+bool App::parse_config(int argc, char **argv)
+{
+  namespace po = df::program_options_lite;
+
+  bool do_help = false;
+
+  po::Options opts;
+  opts.addOptions()
+  ("help", do_help, false, "Print help text")
+  ("-i", input_yuv_path, std::string{}, "Input yuv file path")
+  ("-n", num_of_frames, 0, "Number of frames to process (Default: 0). If set to 0, all frames will be processed.")
+  ("-w", input_width, 1920, "Input width (Default: 1920)")
+  ("-h", input_height, 1080, "Input height (Default: 1080)")
+  ("-f", input_fps, 60.0, "Input fps (Default: 60)")
+  ("-k", keyframe_sec, 1.0, "Interval of a key frame in sec (Default: 1.0)")
+  ("-bs", processed_blk_size, 32, "Processed block size (Default: 32)")
+  ("-p", enable_pca, 1, "Enabling pca (Default: 1)")
+  ("-ps", enable_spatial_pca, 1, "Enabling pca on spatial features (Default: 1)")
+  ("-pd", pca_output_dim, std::string("1:2:3:4:5"), "Output dimension (Integers between 1 and 5) after PCA process (Default: 1:2:3:4:5)")
+  ("-s", enable_simd, 1, "Enabling SIMD (Default: 1)")
+  ("-t", num_threads, 40, "Number of thread used (Default: 40)")
+  ("-o", output_json_path, std::string{}, "Output json file path");
+
+  po::setDefaults(opts);
+  po::ErrorReporter err;
+
+  const auto &argv_unhandled = po::scanArgv(opts, argc, (const char **)argv, err);
+
+  for (auto a : argv_unhandled)
+  {
+    std::cerr << "Unhandled argument ignored: " << a << std::endl;
+  }
+
+  if (argc == 1 || do_help || input_yuv_path.empty() || pca_output_dim.empty() || output_json_path.empty())
+  {
+    po::doHelp(std::cout, opts);
+    return false;
+  }
+
+  return true;
 }
 
 void App::derive_features()
@@ -63,7 +106,10 @@ void App::derive_features()
     }
 
     ++picture_counts;
-    disp.put(image);
+    if (num_of_frames == 0 || picture_counts <= (unsigned)num_of_frames)
+      disp.put(image);
+    else
+      break;
   } while (true);
 
   CThreadPool tp{(unsigned)num_threads};
@@ -85,7 +131,7 @@ void App::derive_features()
     {
       int poc = gout.pictures[i]->poc;
       assert(poc >= 0 && poc < (int)picture_counts);
-      
+
       // GLCM
       for (int j = 0; j < glcm_angles; ++j)
       {
@@ -374,50 +420,12 @@ void App::derive_nlp(
   else
   {
     double p[5];
-    for(int i=0; i<5; ++i)
+    for (int i = 0; i < 5; ++i)
     {
       p[i] = (a[i] + b[i]) / 2.0;
     }
     std::memcpy(storage, p, sizeof(a));
   }
-}
-
-bool App::parse_config(int argc, char **argv)
-{
-  namespace po = df::program_options_lite;
-
-  bool do_help = false;
-
-  po::Options opts;
-  opts.addOptions()("help", do_help, false, "Print help text")
-  ("-i", input_yuv_path, std::string{}, "Input yuv file path")
-  ("-w", input_width, 1920, "Input width (Default: 1920)")
-  ("-h", input_height, 1080, "Input height (Default: 1080)")
-  ("-f", input_fps, 25.0, "Input fps (Default: 30)")
-  ("-k", keyframe_sec, 2.0, "Interval of a key frame in sec (Default: 1.0)")
-  ("-bs", processed_blk_size, 32, "Processed block size (Default: 32)")
-  ("-p", pca_output_num, 2, "Output dimension after PCA process (Default: 1)")
-  ("-s", enable_simd, 1, "Enabling SIMD (Default: 0)")
-  ("-t", num_threads, 40, "Number of thread used (Default: 40)")  
-  ("-o", output_json_path, std::string{}, "Output json file path");
-
-  po::setDefaults(opts);
-  po::ErrorReporter err;
-
-  const auto &argv_unhandled = po::scanArgv(opts, argc, (const char **)argv, err);
-
-  for (auto a : argv_unhandled)
-  {
-    std::cerr << "Unhandled argument ignored: " << a << std::endl;
-  }
-
-  if (argc == 1 || do_help || input_yuv_path.empty() || output_json_path.empty())
-  {
-    po::doHelp(std::cout, opts);
-    return false;
-  }
-
-  return true;
 }
 
 void App::derive_pca()
@@ -428,27 +436,26 @@ void App::derive_pca()
   PCA pca(5);
   std::vector<std::vector<double>> x;
   std::vector<std::vector<double>> temporal_features = {nlp_feat, tc_feat, ncc_feat};
+  
+  std::vector<int> pca_dims = parse_int_from_string(pca_output_dim);
+  int rem = (num_rows * pca_dims.size()) % 5;
+  int pca_ary_size = num_rows * pca_dims.size() + (5 - rem);
 
-  x.resize(num_rows, std::vector<double>(num_cols, 0));
-  pca_feat.resize(picture_counts * num_rows * pca_output_num);
+  x.resize(num_rows, std::vector<double>(num_cols, 0));  
+  pca_feat.resize(picture_counts * pca_ary_size);
 
   for (uint32_t picCnt = 0; picCnt < picture_counts; ++picCnt)
   {
     std::vector<double> features;
-    for (int i = 0; i < glcm_angles; ++i)
+    if (enable_spatial_pca)
     {
-      for (int j = 0; j < num_prop * glcm_distances; ++j)
+      for (int i = 0; i < glcm_angles; ++i)
       {
-        features.push_back(glcm_feat[i * num_prop * glcm_distances + j]);
+        for (int j = 0; j < num_prop * glcm_distances; ++j)
+        {
+          features.push_back(glcm_feat[i * num_prop * glcm_distances + j]);
+        }
       }
-
-      // if (i < glcm_angles - 1)
-      // {
-      //   for (int j = 0; j < num_cols; ++j)
-      //   {
-      //     features.push_back(temporal_features[i][picCnt * num_cols + j]);
-      //   }
-      // }
     }
 
     for (int j = 0; j < 3; ++j)
@@ -468,11 +475,19 @@ void App::derive_pca()
     }
 
     std::vector<std::vector<double>> pca_result = pca.fit_transform(x);
-    for (int r = 0; r < num_rows; ++r)
+    for (unsigned r = 0; r < num_rows; ++r)
     {
-      for (int j = 0; j < pca_output_num; ++j)
+      for (unsigned j = 0; j < pca_dims.size(); ++j)
       {
-        pca_feat[picCnt * num_rows * pca_output_num + r * pca_output_num + j] = pca_result[r][j];
+        pca_feat[picCnt * pca_ary_size + r * pca_dims.size() + j] = pca_result[r][pca_dims.at(j) - 1];
+      }
+
+      if (r == num_rows - 1)
+      {
+        for (signed j = 0; j < 5 - rem; ++j)
+        {
+          pca_feat[picCnt * pca_ary_size + r * pca_dims.size() + rem - 1 + j] = pca_feat[picCnt * pca_ary_size + r * pca_dims.size() + rem - 2];
+        }
       }
     }
   }
@@ -486,6 +501,11 @@ void App::save_as_json()
 
   constexpr int num_rows = glcm_angles * glcm_distances + 3 /* ncc, tc, nlp */;
 
+  std::vector<int> pca_dims = parse_int_from_string(pca_output_dim);
+  int rem = (num_rows * pca_dims.size()) % 5;
+  int size = num_rows * pca_dims.size() + (5 - rem);
+  assert(size % 5 == 0);
+
   for (uint32_t i = 0; i < picture_counts; ++i)
   {
     Json::Value frame;
@@ -495,36 +515,38 @@ void App::save_as_json()
     {
       glcm[k] = glcm_feat[i * num_glcm_features + k];
     }
-    // frame["glcm"] = glcm;
+    frame["glcm"] = glcm;
 
     Json::Value ncc;
     for (int k = 0; k < 5; k++)
     {
       ncc[k] = ncc_feat[i * 5 + k];
     }
-    // frame["ncc"] = ncc;
+    frame["ncc"] = ncc;
 
     Json::Value tc;
     for (int k = 0; k < 5; k++)
     {
       tc[k] = tc_feat[i * 5 + k];
     }
-    // frame["tc"] = tc;
+    frame["tc"] = tc;
 
     Json::Value nlp;
     for (int k = 0; k < 5; k++)
     {
       nlp[k] = nlp_feat[i * 5 + k];
     }
-    // frame["nlp"] = nlp;
+    frame["nlp"] = nlp;
 
-    Json::Value pca_data;
-    int rem = (num_rows * pca_output_num) % 5;
-    for (int k = 0; k < num_rows * pca_output_num - rem; k++)
+    if (enable_pca)
     {
-      pca_data[k] = pca_feat[i * num_rows * pca_output_num + k];
+      Json::Value pca_data;
+      for (int k = 0; k < size; k++)
+      {
+        pca_data[k] = pca_feat[i * size + k];
+      }
+      frame["pca_data"] = pca_data;
     }
-    frame["pca_data"] = pca_data;
 
     frames.append(frame);
   }

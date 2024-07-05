@@ -430,19 +430,21 @@ void App::derive_nlp(
 
 void App::derive_pca()
 {
-  constexpr int num_prop = glcm::NUM_PROPERTIES;
-  constexpr int num_rows = glcm_angles * glcm_distances + 3 /* ncc, tc, nlp */;
-  constexpr int num_cols = 5;
-  PCA pca(5);
+  int num_prop = glcm::NUM_PROPERTIES;
+  int num_spatial_features = glcm_angles * glcm_distances;
+  int num_temporal_features = 3; /* ncc, tc, nlp */
+  int num_features = enable_spatial_pca ? num_spatial_features + num_temporal_features : num_temporal_features;
+  int num_stats = 5; /* Mean, Std, Shannon Entropy, Skewness, Kurtosis */
+  
   std::vector<std::vector<double>> x;
   std::vector<std::vector<double>> temporal_features = {nlp_feat, tc_feat, ncc_feat};
-  
-  std::vector<int> pca_dims = parse_int_from_string(pca_output_dim);
-  int rem = (num_rows * pca_dims.size()) % 5;
-  int pca_ary_size = num_rows * pca_dims.size() + (5 - rem);
 
-  x.resize(num_rows, std::vector<double>(num_cols, 0));  
-  pca_feat.resize(picture_counts * pca_ary_size);
+  std::vector<int> pca_dims = parse_int_from_string(pca_output_dim);
+  PCA pca(pca_dims.size());
+  int pca_size = num_features * pca_dims.size();
+
+  x.resize(num_features, std::vector<double>(num_stats, 0));
+  pca_feat.resize(picture_counts * pca_size);
 
   for (uint32_t picCnt = 0; picCnt < picture_counts; ++picCnt)
   {
@@ -460,34 +462,26 @@ void App::derive_pca()
 
     for (int j = 0; j < 3; ++j)
     {
-      for (int k = 0; k < num_cols; ++k)
+      for (int k = 0; k < num_stats; ++k)
       {
-        features.push_back(temporal_features[j][picCnt * num_cols + k]);
+        features.push_back(temporal_features[j][picCnt * num_stats + k]);
       }
     }
 
-    for (int r = 0; r < num_rows; ++r)
+    for (int r = 0; r < num_features; ++r)
     {
-      for (int c = 0; c < num_cols; ++c)
+      for (int c = 0; c < num_stats; ++c)
       {
-        x[r][c] = features[r * num_cols + c];
+        x[r][c] = features[r * num_stats + c];
       }
     }
 
     std::vector<std::vector<double>> pca_result = pca.fit_transform(x);
-    for (unsigned r = 0; r < num_rows; ++r)
+    for (int r = 0; r < num_features; ++r)
     {
       for (unsigned j = 0; j < pca_dims.size(); ++j)
       {
-        pca_feat[picCnt * pca_ary_size + r * pca_dims.size() + j] = pca_result[r][pca_dims.at(j) - 1];
-      }
-
-      if (r == num_rows - 1)
-      {
-        for (signed j = 0; j < 5 - rem; ++j)
-        {
-          pca_feat[picCnt * pca_ary_size + r * pca_dims.size() + rem - 1 + j] = pca_feat[picCnt * pca_ary_size + r * pca_dims.size() + rem - 2];
-        }
+        pca_feat[picCnt * pca_size + r * pca_dims.size() + j] = pca_result[r][pca_dims.at(j) - 1];
       }
     }
   }
@@ -499,12 +493,12 @@ void App::save_as_json()
   Json::Value root;
   Json::Value frames = Json::Value{Json::arrayValue};
 
-  constexpr int num_rows = glcm_angles * glcm_distances + 3 /* ncc, tc, nlp */;
+  int num_spatial_features = glcm_angles * glcm_distances;
+  int num_temporal_features = 3; /* ncc, tc, nlp */
+  int num_features = enable_spatial_pca ? num_spatial_features + num_temporal_features : num_temporal_features;
 
   std::vector<int> pca_dims = parse_int_from_string(pca_output_dim);
-  int rem = (num_rows * pca_dims.size()) % 5;
-  int size = num_rows * pca_dims.size() + (5 - rem);
-  assert(size % 5 == 0);
+  int size = num_features * pca_dims.size();
 
   for (uint32_t i = 0; i < picture_counts; ++i)
   {

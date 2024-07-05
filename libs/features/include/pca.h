@@ -16,4 +16,7 @@ private:
   unsigned int n_components;
   arma::rowvec mean;
   arma::mat components;
+
+  arma::mat toArmaMat(const std::vector<std::vector<double>> &X_vec);
+  std::vector<std::vector<double>> toStdVec(const arma::mat &X_mat);
 };
